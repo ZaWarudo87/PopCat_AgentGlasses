@@ -77,6 +77,16 @@ app.post('/update-score', async (req, res) => {
     return res.status(400).send('User and score are required');
   }
 
+  try{  // 抓作弊
+    const prev = await pool.query('SELECT * FROM users WHERE username = $1', [user]);
+    if(score - prev.rows[0].score > 70){
+        return res.status(402).send('No cheating');
+    }
+  } catch (err) {
+    console.error('Error getting score:', err);
+    res.status(500).send('Server error');
+  }
+
   try {
     // 更新指定 user 的 score
     const result = await pool.query(
