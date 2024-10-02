@@ -81,7 +81,7 @@ app.post('/update-score', async (req, res) => {
     // 更新指定 user 的 score
     const result = await pool.query(
       'UPDATE users SET score = $1 WHERE username = $2 RETURNING *',
-      [score, user]
+      [parseInt(score), user]
     );
 
     if (result.rows.length > 0) {
