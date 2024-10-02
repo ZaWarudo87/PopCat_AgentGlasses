@@ -1,9 +1,11 @@
 const express = require('express');
+const cors = require('cors');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
 const app = express();
 
-// 使用 bodyParser 來解析 POST 請求中的 JSON 資料
+// 使用 bodyParser 來解析 POST 請求中的 JSON 資料，使用 cors 中間件
+app.use(cors());
 app.use(bodyParser.json());
 
 // 設置 PostgreSQL 連接池
