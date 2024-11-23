@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require("express-session");
 const cors = require('cors');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
@@ -7,6 +8,12 @@ const app = express();
 // 使用 bodyParser 來解析 POST 請求中的 JSON 資料，使用 cors 中間件
 app.use(cors());
 app.use(bodyParser.json());
+app.use(session({
+  secret: "noSecretKey", // 用於加密 Session ID
+  resave: false,          // 無需每次請求都重新儲存 Session
+  saveUninitialized: false, // 只有在有 Session 資料時才創建
+  cookie: { maxAge: 3600000 } // Session 有效期 (1 小時)
+}));
 
 // 設置 PostgreSQL 連接池
 const pool = new Pool({
@@ -29,7 +36,10 @@ pool.connect((err) => {
 // 讓後端起床
 app.post('/wakeup', async (req, res) =>{
       try {
-        res.status(200).json('hello');
+        res.status(200).json({
+          hello: true,
+          user: req.session.user
+        });
       } catch (err) {
         console.error('Error loading user:', err);
         res.status(500).send('Server error');
@@ -65,8 +75,10 @@ app.post('/load', async (req, res) => {
     }
   } catch (err) {
     console.error('Error loading user:', err);
-    res.status(500).send('Server error');
+    return res.status(500).send('Server error');
   }
+
+  req.session.user = user;
 });
 
 // 更新使用者的 score
