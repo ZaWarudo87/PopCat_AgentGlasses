@@ -11,7 +11,7 @@ app.use(session({
   resave: false,          // 無需每次請求都重新儲存 Session
   saveUninitialized: false, // 只有在有 Session 資料時才創建
   cookie: {
-    secure: true,
+    secure: false,
     maxAge: 3600000 // Session 有效期 (1 小時)
   }
 }));
