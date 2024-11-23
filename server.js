@@ -34,7 +34,7 @@ pool.connect((err) => {
 });
 
 // 讓後端起床
-app.post('/wakeup', async (req, res) =>{
+app.get('/wakeup', async (req, res) =>{
   let score = 0;
   if(req.session.user){
     try{
@@ -57,7 +57,7 @@ app.post('/wakeup', async (req, res) =>{
     console.error('Error loading user:', err);
     res.status(500).send('Server error');
   }
-})
+});
 
 // 載入或新增使用者資料
 app.post('/load', async (req, res) => {
@@ -104,7 +104,7 @@ app.post('/update-score', async (req, res) => {
 
   try{  // 抓作弊
     const prev = await pool.query('SELECT * FROM users WHERE username = $1', [user]);
-    if(score - prev.rows[0].score > 70){
+    if(score - prev.rows[0].score > 126){
         return res.status(402).send('No cheating');
     }
   } catch (err) {
@@ -132,15 +132,24 @@ app.post('/update-score', async (req, res) => {
 
 // 返回排行榜資料，按照 score 排序
 app.get('/leaderboard', async (req, res) => {
-    try {
-      const result = await pool.query('SELECT name, score FROM users ORDER BY score DESC');
-      res.status(200).json(result.rows);
-    } catch (err) {
-      console.error('Error fetching leaderboard:', err);
-      res.status(500).send('Server error');
-    }
-  });
-  
+  try {
+    const result = await pool.query('SELECT * FROM users ORDER BY score DESC');
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
+    res.status(500).send('Server error');
+  }
+});
+
+// 登出
+app.get('/logout', async (req, res) => {
+  try {
+    req.session.user = null;
+    res.status(200).send("logout success");
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
 
 // 設定伺服器監聽埠
 const port = process.env.PORT || 3000;
