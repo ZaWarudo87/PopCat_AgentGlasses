@@ -1,5 +1,4 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
@@ -29,37 +28,10 @@ pool.connect((err) => {
   }
 });
 
-// 設定 JWT 秘密金鑰
-const JWT_SECRET = 'yourSecretKey';
-
 // 讓後端起床
 app.get('/wakeup', async (req, res) => {
-  const token = req.cookies.authToken;
-  let score = 0;
-  let user = undefined;
-
-  if (token) {
-    user = null;
-    try {
-      // 驗證 JWT 並解碼
-      const decoded = jwt.verify(token, JWT_SECRET);
-      user = decoded.user;
-
-      // 查詢使用者資料
-      const result = await pool.query('SELECT * FROM users WHERE username = $1', [user]);
-      if (result.rows.length > 0) {
-        score = result.rows[0].score;
-      }
-    } catch (err) {
-      console.error('Error verifying token:', err);
-      return res.status(403).send('Invalid token');
-    }
-  }
-
   res.status(200).json({
-    hello: true,
-    user: user,
-    score: score
+    hello: true
   });
 });
 
@@ -80,9 +52,7 @@ app.post('/load', async (req, res) => {
       if (result.rows[0].name !== name) {
         return res.status(403).send('Name does not match for the provided user');
       }
-      // 如果名稱符合，生成 JWT 並回傳
-      const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('authToken', token, { httpOnly: true, secure: true }); // 設定 token 到 cookie
+
       res.status(200).json(result.rows[0]);
     } else {
       // 如果使用者不存在，新增並設置 score 為 0
@@ -90,8 +60,7 @@ app.post('/load', async (req, res) => {
         'INSERT INTO users (username, name, score) VALUES ($1, $2, 0) RETURNING *',
         [user, name]
       );
-      const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('authToken', token, { httpOnly: true, secure: true }); // 設定 token 到 cookie
+      
       res.status(201).json(insertResult.rows[0]);
     }
   } catch (err) {
