@@ -1,23 +1,15 @@
 const express = require('express');
-const session = require("express-session");
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const app = express();
 
-// 使用 bodyParser 來解析 POST 請求中的 JSON 資料，使用 cors 中間件
-app.use(session({
-  secret: "noSecretKey", // 用於加密 Session ID
-  resave: false,          // 無需每次請求都重新儲存 Session
-  saveUninitialized: false, // 只有在有 Session 資料時才創建
-  cookie: {
-    secure: false,
-    maxAge: 3600000 // Session 有效期 (1 小時)
-  }
-}));
+// 使用 bodyParser 和 cookieParser 來解析請求中的 JSON 和 Cookie 資料
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // 設置 PostgreSQL 連接池
 const pool = new Pool({
@@ -37,30 +29,37 @@ pool.connect((err) => {
   }
 });
 
+// 設定 JWT 秘密金鑰
+const JWT_SECRET = 'yourSecretKey';
+
 // 讓後端起床
-app.get('/wakeup', async (req, res) =>{
+app.get('/wakeup', async (req, res) => {
+  const token = req.cookies.authToken;
   let score = 0;
-  if(req.session.user){
-    try{
-      const result = pool.query('SELECT * FROM users WHERE username = $1', [req.session.user]);
+  let user = null;
+
+  if (token) {
+    try {
+      // 驗證 JWT 並解碼
+      const decoded = jwt.verify(token, JWT_SECRET);
+      user = decoded.user;
+
+      // 查詢使用者資料
+      const result = await pool.query('SELECT * FROM users WHERE username = $1', [user]);
       if (result.rows.length > 0) {
         score = result.rows[0].score;
       }
-    } catch(err) {
-      console.error('Error loading score: ', err);
+    } catch (err) {
+      console.error('Error verifying token:', err);
+      return res.status(403).send('Invalid token');
     }
   }
-  
-  try {
-    res.status(200).json({
-      hello: true,
-      user: req.session.user,
-      score: score
-    });
-  } catch (err) {
-    console.error('Error loading user:', err);
-    res.status(500).send('Server error');
-  }
+
+  res.status(200).json({
+    hello: true,
+    user: user,
+    score: score
+  });
 });
 
 // 載入或新增使用者資料
@@ -80,8 +79,9 @@ app.post('/load', async (req, res) => {
       if (result.rows[0].name !== name) {
         return res.status(403).send('Name does not match for the provided user');
       }
-      // 如果名稱符合，回傳使用者資料
-      req.session.user = user;
+      // 如果名稱符合，生成 JWT 並回傳
+      const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: '1h' });
+      res.cookie('authToken', token, { httpOnly: true, secure: false }); // 設定 token 到 cookie
       res.status(200).json(result.rows[0]);
     } else {
       // 如果使用者不存在，新增並設置 score 為 0
@@ -89,7 +89,8 @@ app.post('/load', async (req, res) => {
         'INSERT INTO users (username, name, score) VALUES ($1, $2, 0) RETURNING *',
         [user, name]
       );
-      req.session.user = user;
+      const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: '1h' });
+      res.cookie('authToken', token, { httpOnly: true, secure: false }); // 設定 token 到 cookie
       res.status(201).json(insertResult.rows[0]);
     }
   } catch (err) {
@@ -106,10 +107,10 @@ app.post('/update-score', async (req, res) => {
     return res.status(400).send('User and score are required');
   }
 
-  try{  // 抓作弊
+  try {
     const prev = await pool.query('SELECT * FROM users WHERE username = $1', [user]);
-    if(score - prev.rows[0].score > 126){
-        return res.status(402).send('No cheating');
+    if (score - prev.rows[0].score > 126) {
+      return res.status(402).send('No cheating');
     }
   } catch (err) {
     console.error('Error getting score:', err);
@@ -146,13 +147,9 @@ app.get('/leaderboard', async (req, res) => {
 });
 
 // 登出
-app.get('/logout', async (req, res) => {
-  try {
-    req.session.user = null;
-    res.status(200).send("logout success");
-  } catch (err) {
-    res.status(500).send(err);
-  }
+app.get('/logout', (req, res) => {
+  res.clearCookie('authToken'); // 清除 cookie 中的 token
+  res.status(200).send("logout success");
 });
 
 // 設定伺服器監聽埠
