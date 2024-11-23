@@ -35,15 +35,28 @@ pool.connect((err) => {
 
 // 讓後端起床
 app.post('/wakeup', async (req, res) =>{
-      try {
-        res.status(200).json({
-          hello: true,
-          user: req.session.user
-        });
-      } catch (err) {
-        console.error('Error loading user:', err);
-        res.status(500).send('Server error');
+  let score = 0;
+  if(req.session.user){
+    try{
+      const result = pool.query('SELECT * FROM users WHERE username = $1', [req.session.user]);
+      if (result.rows.length > 0) {
+        score = result.rows[0].score;
       }
+    } catch(err) {
+      console.error('Error loading score: ', err);
+    }
+  }
+  
+  try {
+    res.status(200).json({
+      hello: true,
+      user: req.session.user,
+      score: score
+    });
+  } catch (err) {
+    console.error('Error loading user:', err);
+    res.status(500).send('Server error');
+  }
 })
 
 // 載入或新增使用者資料
