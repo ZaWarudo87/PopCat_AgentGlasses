@@ -53,6 +53,8 @@ app.get('/wakeup', async (req, res) => {
       console.error('Error verifying token:', err);
       return res.status(403).send('Invalid token');
     }
+  }else{
+    user = undefined;
   }
 
   res.status(200).json({
