@@ -82,7 +82,7 @@ app.post('/load', async (req, res) => {
       }
       // 如果名稱符合，生成 JWT 並回傳
       const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('authToken', token, { httpOnly: false, secure: false }); // 設定 token 到 cookie
+      res.cookie('authToken', token, { httpOnly: true, secure: true }); // 設定 token 到 cookie
       res.status(200).json(result.rows[0]);
     } else {
       // 如果使用者不存在，新增並設置 score 為 0
@@ -91,7 +91,7 @@ app.post('/load', async (req, res) => {
         [user, name]
       );
       const token = jwt.sign({ user }, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('authToken', token, { httpOnly: false, secure: false }); // 設定 token 到 cookie
+      res.cookie('authToken', token, { httpOnly: true, secure: true }); // 設定 token 到 cookie
       res.status(201).json(insertResult.rows[0]);
     }
   } catch (err) {
