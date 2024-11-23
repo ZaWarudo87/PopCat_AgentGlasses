@@ -77,6 +77,7 @@ app.post('/load', async (req, res) => {
         return res.status(403).send('Name does not match for the provided user');
       }
       // 如果名稱符合，回傳使用者資料
+      req.session.user = user;
       res.status(200).json(result.rows[0]);
     } else {
       // 如果使用者不存在，新增並設置 score 為 0
@@ -84,14 +85,13 @@ app.post('/load', async (req, res) => {
         'INSERT INTO users (username, name, score) VALUES ($1, $2, 0) RETURNING *',
         [user, name]
       );
+      req.session.user = user;
       res.status(201).json(insertResult.rows[0]);
     }
   } catch (err) {
     console.error('Error loading user:', err);
-    return res.status(500).send('Server error');
+    res.status(500).send('Server error');
   }
-
-  req.session.user = user;
 });
 
 // 更新使用者的 score
