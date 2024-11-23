@@ -60,7 +60,7 @@ app.post('/load', async (req, res) => {
         'INSERT INTO users (username, name, score) VALUES ($1, $2, 0) RETURNING *',
         [user, name]
       );
-      
+
       res.status(201).json(insertResult.rows[0]);
     }
   } catch (err) {
@@ -114,12 +114,6 @@ app.get('/leaderboard', async (req, res) => {
     console.error('Error fetching leaderboard:', err);
     res.status(500).send('Server error');
   }
-});
-
-// 登出
-app.get('/logout', (req, res) => {
-  res.clearCookie('authToken'); // 清除 cookie 中的 token
-  res.status(200).send("logout success");
 });
 
 // 設定伺服器監聽埠
